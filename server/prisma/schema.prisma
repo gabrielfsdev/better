@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               Int              @id @default(autoincrement())
+  goals            Goal[]
+  weeklyPriorities WeeklyPriority[]
+  tasks            Task[]
+  habits           Habit[]
+  scheduleBlocks   ScheduleBlock[]
+  weeklyReviews    WeeklyReview[]
+
+  @@map("users")
+}
+
+model Goal {
+  id               Int              @id @default(autoincrement())
+  userId           Int              @map("user_id")
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentGoalId     Int?             @map("parent_goal_id")
+  parentGoal       Goal?            @relation("GoalHierarchy", fields: [parentGoalId], references: [id], onDelete: SetNull)
+  subGoals         Goal[]           @relation("GoalHierarchy")
+  title            String
+  description      String?          @db.Text
+  status           String
+  weeklyPriorities WeeklyPriority[]
+
+  @@map("goals")
+}
+
+model WeeklyPriority {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId        Int?     @map("goal_id")
+  goal          Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  weekStartDate DateTime @map("week_start_date") @db.Date
+  title         String
+  status        String
+  sortOrder     Int      @default(0) @map("sort_order")
+
+  @@map("weekly_priorities")
+}
+
+model Task {
+  id             Int             @id @default(autoincrement())
+  userId         Int             @map("user_id")
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  status         String
+  dueAt          DateTime?       @map("due_at")
+  scheduleBlocks ScheduleBlock[]
+
+  @@map("tasks")
+}
+
+model Habit {
+  id            Int        @id @default(autoincrement())
+  userId        Int        @map("user_id")
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  frequencyRule String     @map("frequency_rule")
+  status        String
+  habitLogs     HabitLog[]
+
+  @@map("habits")
+}
+
+model HabitLog {
+  id          Int       @id @default(autoincrement())
+  habitId     Int       @map("habit_id")
+  habit       Habit     @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  localDate   DateTime  @map("local_date") @db.Date
+  status      String
+  completedAt DateTime? @map("completed_at")
+
+  @@map("habit_logs")
+}
+
+model ScheduleBlock {
+  id      Int       @id @default(autoincrement())
+  userId  Int       @map("user_id")
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId  Int?      @map("task_id")
+  task    Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  title   String
+  startAt DateTime  @map("start_at")
+  endAt   DateTime  @map("end_at")
+
+  @@map("schedule_blocks")
+}
+
+model WeeklyReview {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartDate   DateTime @map("week_start_date") @db.Date
+  reviewDecisions Json?    @map("review_decisions")
+  summary         String?  @db.Text
+
+  @@map("weekly_reviews")
+}
