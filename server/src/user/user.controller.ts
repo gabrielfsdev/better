@@ -6,11 +6,13 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    if (!this.userService.user({ id: parseInt(id) })) {
+  async findOne(@Param('id') id: string) {
+    const user = await this.userService.user({ id: parseInt(id) });
+    console.log('id: ', user);
+    if (!user) {
       return { message: 'User not found' };
     }
-    return this.userService.user({ id: parseInt(id) });
+    return user;
   }
 
 }
