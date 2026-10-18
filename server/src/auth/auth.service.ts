@@ -1,32 +1,39 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { UserService } from '../user/user.service.js';
-
-interface AuthInput {
-  username: string;
-  password: string;
-};
+import { JwtService } from '@nestjs/jwt';
+import argon2 from 'argon2';
 
 @Injectable()
 export class AuthService {
-  constructor(private userService: UserService) {}
+  constructor(
+    private userService: UserService,
+    private jwtService: JwtService,
+  ) {}
 
-  async authenticateUser(input: AuthInput): Promise<any> {
-    const user = await this.validateUser(input);
-    if (user) {
-      // Generate an access token (for simplicity, using a dummy token here)
-      const accessToken = 'dummy-access-token'; // Replace with actual token generation logic
-      return { ...user, accessToken };
+  async register(dto: { name: string; email: string; password: string }) {
+    const existing = await this.userService.user({ email: dto.email });
+    if (existing) {
+      throw new BadRequestException('Email already in use');
     }
-    return null;
+    const hashedPassword = await argon2.hash(dto.password);
+    const user = await this.userService.createUser({
+      username: dto.name,
+      email: dto.email,
+      password: hashedPassword,
+    });
+    return { id: user.id, name: user.username, email: user.email };
   }
 
-  async validateUser(input: AuthInput): Promise<any> {
-    const { username, password } = input;
-    const user = await this.userService.user({ username });
-
-    if (user && user.password === password) {
-      return { id: user.id, username: user.username };
+  async login(dto: { email: string; password: string }) {
+    const user = await this.userService.user({ email: dto.email });
+    if (!user || !(await argon2.verify(dto.password, user.password))) {
+      throw new UnauthorizedException('Invalid credentials');
     }
-    return null;
+    const payload = { sub: user.id, email: user.email };
+    const accessToken = await this.jwtService.signAsync(payload);
+    return {
+      accessToken,
+      user: { id: user.id, name: user.username, email: user.email },
+    };
   }
 }
