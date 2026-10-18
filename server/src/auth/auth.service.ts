@@ -10,14 +10,14 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(dto: { name: string; email: string; password: string }) {
+  async register(dto: { username: string; email: string; password: string }) {
     const existing = await this.userService.user({ email: dto.email });
     if (existing) {
       throw new BadRequestException('Email already in use');
     }
     const hashedPassword = await argon2.hash(dto.password);
     const user = await this.userService.createUser({
-      username: dto.name,
+      username: dto.username,
       email: dto.email,
       password: hashedPassword,
     });
@@ -26,7 +26,7 @@ export class AuthService {
 
   async login(dto: { email: string; password: string }) {
     const user = await this.userService.user({ email: dto.email });
-    if (!user || !(await argon2.verify(dto.password, user.password))) {
+    if (!user || !(await argon2.verify(user.password, dto.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
     const payload = { sub: user.id, email: user.email };
